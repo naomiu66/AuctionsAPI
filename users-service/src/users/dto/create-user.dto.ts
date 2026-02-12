@@ -1,11 +1,28 @@
+import { IsEmail, IsOptional, IsString, MinLength } from 'class-validator';
+import { RegisterDto } from 'src/auth/dto/register.dto';
 export class CreateUserDto {
-  readonly username?: string;
+  @IsString()
+  @MinLength(3)
+  readonly username!: string;
 
+  @IsString()
+  @IsEmail()
+  @IsOptional()
   readonly email?: string;
 
-  password?: string;
+  @IsString()
+  @MinLength(6)
+  password!: string;
 
-  readonly telegramId?: number;
+  constructor(partial: Partial<CreateUserDto>) {
+    Object.assign(this, partial);
+  }
 
-  readonly telegramUsername?: string;
+  static fromRegisterDto(dto: RegisterDto): CreateUserDto {
+    return new CreateUserDto({
+      username: dto.username,
+      email: dto.email,
+      password: dto.password,
+    });
+  }
 }

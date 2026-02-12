@@ -3,22 +3,22 @@ import { HydratedDocument } from 'mongoose';
 
 export type UserDocument = HydratedDocument<User>;
 
-@Schema({ timestamps: true })
+@Schema()
 export class User {
-  @Prop({ unique: true, sparse: true })
-  telegramId?: number;
-
-  @Prop()
-  telegramUsername?: string;
-
-  @Prop()
+  @Prop({ unique: true })
   username!: string;
 
-  @Prop({ unique: true, sparse: true })
+  @Prop({ unique: true })
   email?: string;
 
   @Prop()
   passwordHash!: string;
+
+  @Prop()
+  createdAt!: Date;
+
+  @Prop()
+  updatedAt!: Date;
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);

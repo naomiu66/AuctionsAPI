@@ -1,30 +1,36 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
-import { ValidationPipe } from '@nestjs/common';
+import { Logger, ValidationPipe } from '@nestjs/common';
 import session from 'express-session';
 import cookieParser from 'cookie-parser';
-import { createClient } from 'redis';
-import passport from 'passport';
-// import { RedisStore } from 'connect-redis';
-// import * as connectRedis from 'connect-redis';
+import { RedisService } from './redis/redis.service';
+import { ConfigService } from '@nestjs/config';
+import { RedisStore } from 'connect-redis';
+import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+  app.useGlobalInterceptors(new LoggingInterceptor());
 
-  const redisClient = createClient({
-    url: process.env.REDIS_URL ?? 'redis://localhost:6379',
+  const configService = app.get(ConfigService);
+  const redisService = app.get(RedisService);
+  const redisClient = redisService.getClient();
+
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call
+  const redisStore: session.Store = new RedisStore({
+    client: redisClient,
+    prefix: 'session:',
   });
-  await redisClient.connect();
-  // const RedisStore = new connectRedis.RedisStore(session);
 
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
   app.use(cookieParser());
   app.use(
     session({
-      secret: process.env.SECRET_SESSION ?? 'my-session-secret',
+      store: redisStore,
+      secret: configService.get<string>('SESSION_SECRET') ?? '',
       resave: false,
       saveUninitialized: false,
-      name: 'sid',
+      name: 'sessionId',
       cookie: {
         httpOnly: true,
         secure: false,
@@ -33,11 +39,13 @@ async function bootstrap() {
     }),
   );
 
-  await app.listen(process.env.PORT ?? 3000, () => {
-    console.log(`Listening on port: ${process.env.PORT ?? 3000}`);
+  await app.listen(configService.get<string>('PORT') ?? 3000, () => {
+    Logger.log(
+      `Listening on port: ${configService.get<string>('PORT') ?? 3000}`,
+    );
   });
 }
 bootstrap().catch((err) => {
-  console.error('Error during bootstrap', err);
+  Logger.error('Error during bootstrap', err);
   process.exit(1);
 });
